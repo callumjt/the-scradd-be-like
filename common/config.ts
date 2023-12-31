@@ -1,15 +1,15 @@
 import {
 	ChannelType,
-	ForumChannel,
-	TextChannel,
 	type NonThreadGuildBasedChannel,
-	NewsChannel,
-	MediaChannel,
+	type Channel,
+	type ThreadManager,
 } from "discord.js";
 import { client } from "strife.js";
 
 const guild = await client.guilds.fetch(process.env.GUILD_ID);
-if (!guild.available) throw new ReferenceError("Guild is unavailable!");
+if (!guild.available) throw new ReferenceError("Main guild is unavailable!");
+const guilds = await client.guilds.fetch();
+guilds.delete(guild.id);
 
 async function getConfig() {
 	const channels = await guild.channels.fetch();
@@ -18,17 +18,20 @@ async function getConfig() {
 	const mod = roles.find((role) => role.editable && role.name.toLowerCase().includes("mod"));
 	return {
 		guild,
+		otherGuildIds: [...guilds.keys()],
+		testingGuild: await client.guilds.fetch("938438560925761619").catch(() => void 0),
 
 		channels: {
 			info: getChannel("Info", ChannelType.GuildCategory, "start"),
 			announcements:
 				guild.systemChannel || getChannel("server", ChannelType.GuildText, "start"),
-			tickets: getChannel("contact", ChannelType.GuildText, "start"),
 			board: getChannel(
 				"board",
 				[ChannelType.GuildText, ChannelType.GuildAnnouncement],
 				"end",
 			),
+			tickets: getChannel("contact", ChannelType.GuildText, "start"),
+			server: "1138116320249000077",
 			welcome: getChannel("welcome", ChannelType.GuildText),
 
 			mod: getChannel("mod-talk", ChannelType.GuildText),
@@ -39,7 +42,6 @@ async function getConfig() {
 			general: getChannel("general", ChannelType.GuildText),
 
 			support: "826250884279173162",
-			server: "1138116320249000077",
 			updates: getChannel("updates", ChannelType.GuildText, "partial"),
 			suggestions: getChannel("suggestions", ChannelType.GuildForum),
 			bugs: getChannel("bug", ChannelType.GuildForum, "start"),
@@ -51,6 +53,7 @@ async function getConfig() {
 			bots: getChannel("bots", ChannelType.GuildText, "partial"),
 
 			old_suggestions: getChannel("suggestions", ChannelType.GuildText, "partial"),
+			qotd: getChannel("qotd", ChannelType.GuildText, "start"),
 		},
 
 		roles: {
@@ -98,8 +101,6 @@ export async function syncConfig() {
 export default config;
 
 const threads = await config.guild.channels.fetchActiveThreads();
-export function getInitialChannelThreads(
-	channel: ForumChannel | MediaChannel | TextChannel | NewsChannel,
-) {
+export function getInitialChannelThreads(channel: Extract<Channel, { threads: ThreadManager }>) {
 	return threads.threads.filter(({ parent }) => parent?.id === channel.id);
 }
